@@ -1,4 +1,4 @@
-# Understanding-customer-behavior-and-preference--by-using-MySQL
+# Understanding customer behavior and preference by using MySQL
 
 
 Project name- Understanding the customer behavior and preference- Analyzing the dinning patterns using MySQL.
