@@ -1,4 +1,6 @@
 # Understanding-customer-behavior-and-preference--by-using-MySQL
+
+
 Project name- Understanding the customer behavior and preference- Analyzing the dinning patterns using MySQL.
 
 Project Overview :- The primary objective of this project to answer the key questions about the customer behavior to perform the sql queries.
