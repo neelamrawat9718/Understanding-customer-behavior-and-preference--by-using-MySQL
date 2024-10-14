@@ -42,14 +42,16 @@ values
   group by sales.customer_id;
   
   /*What was the first item from the menu purchased by each customer?*/
-with first_item as (
-select customer_id,order_date,product_id,row_number() over
+
+with first_item as (select customer_id,order_date,product_id,rank() over
 (partition by customer_id order by order_date) as row_num from sales
 group by customer_id,order_date,product_id)
+
 select first_item.customer_id,first_item.order_date,menu.product_name from first_item
 left join
 menu on first_item.product_id = menu.product_id
 where row_num =1;
+
 
 /* What is the most purchased item on the menu and how many times was it purchased by all customers*/
 select m.product_name, count(m.product_name) as purchase_times from 
@@ -57,55 +59,27 @@ sales s
 join menu m 
 on s.product_id=m.product_id
 group by m.product_name
-order by purchase_times desc;
+order by purchase_times desc limit 1;
 
 /* Which item was the most popular for each customer*/
-select distinct s.customer_id,m.product_name, count(m.product_name) as purchase_times from 
-sales s 
-join menu m 
-on s.product_id=m.product_id
-group by s.customer_id,m.product_name
-order by purchase_times desc
-limit 4;
+with most_popular as (Select s.customer_id,m.product_name, count(m.product_id) as order_count,
+dense_rank() over (partition by s.customer_id order by count(s.customer_id) desc) as rnk 
+from menu m inner join sales s
+on m.product_id = s.product_id
+group by s.customer_id,m.product_name)
+Select customer_id,product_name,order_count from most_popular
+where rnk = 1;
 
-WITH freq_rank AS (
-      SELECT
-         distinct customer_id,
-         product_id,
-         COUNT(*) AS frequency,
-         rank() OVER (PARTITION BY customer_id ORDER BY COUNT(*) DESC) AS fr_rank
-      FROM
-         sales
-      GROUP BY
-         customer_id, product_id)
-SELECT
-   fr.customer_id,
-   fr.frequency,
-   m.product_name
-FROM
-   freq_rank fr
-LEFT JOIN
-   menu m
-ON
-   fr.product_id = m.product_id
-WHERE
-   fr_rank = 1;
-   
  /*  Which item was purchased first by the customer after they became a member?*/
- with after_membership as (select 
- mem.customer_id,
- s.product_id,s.order_date,
- row_number() over (partition by mem.customer_id order by s.order_date) as row_num
- from members mem
- join sales s on mem.customer_id = s.customer_id
- and s.order_date>=mem.join_date)
- select
- am.customer_id,m.product_name,am.order_date
- from after_membership as am
- join menu m
- on am.product_id = m.product_id
- where row_num=1
- order by customer_id ASC;
+ with joined_as_member as (Select mbr.customer_id,s.product_id, s.order_date,
+ row_number() over ( partition by mbr.customer_id order by s.order_date) as row_num 
+ from members mbr inner join sales s 
+ on mbr.customer_id = s.customer_id
+ and s.order_date > mbr.join_date)
+ select customer_id,product_name from joined_as_member
+ inner join menu on joined_as_member.product_id = menu.product_id
+ where row_num = 1
+ order by customer_id asc;
  
  /*Which item was purchased just before the customer became a member?*/
  with justbefore_member as(
@@ -121,18 +95,15 @@ WHERE
  order by jm.customer_id asc;
  
  /*What is the total items and amount spent for each member before they became a member*/
-select s.customer_id,s.order_date,
-count(s.product_id) as total_items,
-sum(m.price) as total_spent
-from sales s
-join menu m 
-on s.product_id = m.product_id
-join members mem
-on s.customer_id = mem.customer_id
-where s.order_date < mem.join_date
-group by s.customer_id,s.order_date
-order by s.customer_id;
-
+SELECT S.customer_id,
+  COUNT(S.product_id) AS total_item,
+  SUM(M.price) AS total_amont
+FROM sales S
+JOIN menu M ON S.product_id=M.product_id
+JOIN members ME ON S.customer_id=ME.customer_id
+WHERE S.order_date<ME.join_date
+GROUP BY S.customer_id
+ORDER BY S.customer_id;
 /*If each $1 spent equates to 10 points and sushi has a 2x muliplier- how many points would each customer have? */
 select s.customer_id,
 sum(case
