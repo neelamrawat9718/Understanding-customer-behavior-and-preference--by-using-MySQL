@@ -59,46 +59,130 @@ values
   ('A', '2021-01-07'),
   ('B', '2021-01-09');
 ```
+ **What is the total amount each customer spent at the restaurant?**
 ```sql
+  Select sales.customer_id,sum(menu.price) as total_amount from sales
+  left join menu 
+  on sales.product_id=menu.product_id
+  group by sales.customer_id;
+```
+![image](https://github.com/user-attachments/assets/c93cf028-777e-4560-b28a-f8e39d68b1bc)
+
+- Customer A spent $76.
+- Customer B spent $74.
+- Customer C spent $36.
 
 
-
-
-
-
-
-
-
-
-
+ **How many days has each customer visited the restaurant?**
 ```sql
- /*What was the first item from the menu purchased by each customer?*/
-with first_item as (
-select customer_id,order_date,product_id,row_number() over
+  select sales.customer_id, 
+  count(distinct sales.order_date) as visited_day
+  from sales
+  group by sales.customer_id;
+```
+
+![image](https://github.com/user-attachments/assets/c8027202-89ec-4b34-9d84-1aec751992c0)
+
+- Customer A visited 4 times.
+- Customer B visited 6 times.
+- Customer C visited 2 times.
+
+
+ **What was the first item from the menu purchased by each customer?**
+```sql
+with first_item as (select customer_id,order_date,product_id,rank() over
 (partition by customer_id order by order_date) as row_num from sales
 group by customer_id,order_date,product_id)
+
 select first_item.customer_id,first_item.order_date,menu.product_name from first_item
 left join
 menu on first_item.product_id = menu.product_id
 where row_num =1;
 ```
+
+![image](https://github.com/user-attachments/assets/b1cd125c-1c2a-4afc-86f0-cf1e66432940)
+
+- Customer A placed an order for both curry and sushi simultaneously, making them the first items in the order.
+- Customer B's first order is curry.
+- Customer C's first order is ramen.
+
+**What is the most purchased item on the menu and how many times was it purchased by all customers**
 ```sql
-/* What is the most purchased item on the menu and how many times was it purchased by all customers*/
 select m.product_name, count(m.product_name) as purchase_times from 
 sales s 
 join menu m 
 on s.product_id=m.product_id
 group by m.product_name
-order by purchase_times desc;
+order by purchase_times desc limit 1;
 ```
+![image](https://github.com/user-attachments/assets/aff0b4d4-ef36-4027-a603-1cf114c1715a)
+- Most purchased item on the menu is ramen which is 8 times. Yummy!
 
+**Which item was the most popular for each customer**
 ```sql
+with most_popular as (Select s.customer_id,m.product_name, count(m.product_id) as order_count,
+dense_rank() over (partition by s.customer_id order by count(s.customer_id) desc) as rnk 
+from menu m inner join sales s
+on m.product_id = s.product_id
+group by s.customer_id,m.product_name)
+Select customer_id,product_name,order_count from most_popular
+where rnk = 1;
+```
+![image](https://github.com/user-attachments/assets/e14a166e-6af3-4590-bc4c-3bb830c7fce7)
+- Customer A and C's favourite item is ramen.
+- Customer B enjoys all items on the menu. He/she is a true foodie, sounds like me.
+
+**Which item was purchased first by the customer after they became a member?**
+```sql
+ with joined_as_member as (Select mbr.customer_id,s.product_id, s.order_date,
+ row_number() over ( partition by mbr.customer_id order by s.order_date) as row_num 
+ from members mbr inner join sales s 
+ on mbr.customer_id = s.customer_id
+ and s.order_date > mbr.join_date)
+ select customer_id,product_name from joined_as_member
+ inner join menu on joined_as_member.product_id = menu.product_id
+ where row_num = 1
+ order by customer_id asc;
+ ```
+![image](https://github.com/user-attachments/assets/39243cbd-e4cb-4b41-88c1-ced180b389a6)
+- Customer A's first order as a member is ramen.
+- Customer B's first order as a member is sushi.
+
+**Which item was purchased just before the customer became a member?**
+```sql
+ with justbefore_member as(
+ select s.customer_id,s.product_id,s.order_date,row_number()
+ over(partition by s.customer_id order by s.order_date desc) as row_num
+ from sales s
+ join members mem on
+ s.customer_id=mem.customer_id and s.order_date<mem.join_date)
+ select jm.customer_id,m.product_name,jm.order_date from justbefore_member jm
+ join menu m
+ on jm.product_id = m.product_id
+ where row_num=1
+ order by jm.customer_id asc;
+```
+![image](https://github.com/user-attachments/assets/0c7b30c3-6cb7-4aa5-878b-5a7f2bf4e525)
+- Both customers' last order before becoming members are sushi.
+
+ **What is the total items and amount spent for each member before they became a member**
+  ```sql
+SELECT S.customer_id,
+  COUNT(S.product_id) AS total_item,
+  SUM(M.price) AS total_amont
+FROM sales S
+JOIN menu M ON S.product_id=M.product_id
+JOIN members ME ON S.customer_id=ME.customer_id
+WHERE S.order_date<ME.join_date
+GROUP BY S.customer_id
+ORDER BY S.customer_id
+
+![image](https://github.com/user-attachments/assets/f9833b87-25ff-402e-b94d-80fcf9cf7c82)
+
+Before becoming members,
+
+Customer A spent $150 on 12 items.
+Customer B spent $240 on 18 items.
 
 
 
-
-
-
-
-
-Conclusion :At Danny's Diner, I used SQL to understand customer behavior better. I looked at questions like how much customers spend, how often they visit, their favorite dishes, and the effect of the loyalty program. By analyzing this information, Danny made smart choices to improve customer satisfaction and run the business more efficiently.
