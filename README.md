@@ -176,13 +176,13 @@ JOIN members ME ON S.customer_id=ME.customer_id
 WHERE S.order_date<ME.join_date
 GROUP BY S.customer_id
 ORDER BY S.customer_id
-
+```
 ![image](https://github.com/user-attachments/assets/f9833b87-25ff-402e-b94d-80fcf9cf7c82)
 
 Before becoming members,
 
-Customer A spent $150 on 12 items.
-Customer B spent $240 on 18 items.
+- Customer A spent $150 on 12 items.
+- Customer B spent $240 on 18 items.
 
 
 
